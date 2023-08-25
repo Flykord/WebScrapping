@@ -11,6 +11,9 @@ import customtkinter
 from tkinter import ttk
 from CTkMessagebox import CTkMessagebox
 import urllib.request
+from PIL import Image
+from io import BytesIO
+
 customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("green")
 
@@ -71,8 +74,9 @@ class App(customtkinter.CTk):
         self.tabview.grid(row=1, column=1, columnspan=2, rowspan=5, padx=(10, 0), pady=(0, 0), sticky="nsew")
         self.tabview.add("Images")       
         self.tabview.tab("Images").grid_columnconfigure(0, weight=3)  # configure grid of individual tabs
-    
-
+        self.imagesSpace=customtkinter.CTkScrollableFrame(master=self.tabview.tab("Images"))
+        self.imagesScroll = customtkinter.CTkScrollbar(master=self.tabview.tab("Images"))
+        self.imagesScroll.grid(row=0,column=0,sticky="ns")
         # create radiobutton frame
         self.options_frame = customtkinter.CTkFrame(self)
         self.options_frame.grid(row=0, column=3, rowspan=2, padx=(20, 20), pady=(20, 0), sticky="nsew")              
@@ -141,12 +145,15 @@ class App(customtkinter.CTk):
         print(product)
         self.producTextbox.delete("0.0","end")
         url_base="https://www.mercadolibre.com.mx/"
-        url_with_search = "https://listado.mercadolibre.com.mx/sworks#D[A:sworks]"
-        r=requests.get(url_with_search)
+        #url_with_search = "https://listado.mercadolibre.com.mx/sworks#D[A:sworks]"
+        #r=requests.get(url_with_search)
+        #content = r.content
+        url_consult="https://listado.mercadolibre.com.mx/{}#D[A:{}]".format(product.replace(' ','-'),product)
+        r=requests.get(url_consult)
+        print(r)
         content = r.content
-        url_consult="https://www.mercadolibre.com.mx/{}#D[A:{}]".format(product.replace(' ','-'),product)
-        r=requests.get(url_with_search)
-        content = r.content
+        print(content)
+        print(url_consult)
         soup = BeautifulSoup(content,'html.parser')
         #print(soup)
         
@@ -168,10 +175,45 @@ class App(customtkinter.CTk):
             data['price']=item.find('span',{'class':'andes-money-amount__fraction'}).text
             products.append(data)
             #print(im_src)
+        
+        self.muestraProductos(products)
+            
             
     def muestraProductos(self,data):
-        print("")
+        col=0
+        row=0
+        for prod in data:
+            print(prod)
+            if col==10:
+                row+=1
+                col=0
+            self.createView(prod,row,col)
+            col+=1
             
+    def createView(self,prod,row,col):
+        
+        im = self.getImage(prod['imagen'])
+        #print(prod['imagen'])
+        your_image = customtkinter.CTkImage(light_image=im, size=(130 ,100))
+        self.productName = customtkinter.CTkLabel(master=self.tabview.tab("Images"),text="", image=your_image)
+        self.productName.grid(row=row, column=col, padx=(4,4), pady=(4, 4),sticky="nsew")
+    
+    def getImage(self,link):
+        print(link)
+        response = requests.get(link)
+
+        # Verifica si la solicitud fue exitosa (código de estado 200)
+        if response.status_code == 200:
+            # Lee los datos de la imagen en formato binario
+            image_data = BytesIO(response.content)
+
+            # Abre la imagen con Pillow
+            imagen = Image.open(image_data)
+
+     
+        else:
+            print("No se pudo obtener la imagen desde el enlace.")
+        return imagen
 if __name__ == "__main__":
     app = App()
     app.mainloop()
